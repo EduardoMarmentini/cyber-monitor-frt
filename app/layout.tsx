@@ -1,0 +1,55 @@
+import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono, Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { ESP32Provider } from "@/contexts/esp32-context";
+import { ScanProvider } from "@/contexts/scan-context";
+import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
+export const metadata: Metadata = {
+  title: "CYBER.MONITOR | Network Monitor",
+  description: "Dashboard de monitoramento de redes Wi-Fi e BLE em tempo real",
+  generator: "v0.app",
+  icons: {
+    icon: [
+      {
+        url: "/cyber-monitor-logo.ico",
+      }
+    ],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a0a12",
+  colorScheme: "dark",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="pt-BR" className="dark bg-background">
+      <body
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+      >
+        <ESP32Provider>
+          <ScanProvider>
+            {children}
+          </ScanProvider>
+        </ESP32Provider>
+        {process.env.NODE_ENV === "production" && <Analytics />}
+      </body>
+    </html>
+  );
+}
