@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Sidebar } from "@/components/sidebar/sidebar";
-import { Navbar } from "@/components/navbar/navbar";
 import { useESP32 } from "@/contexts/esp32-context";
 import { useScan } from "@/contexts/scan-context";
 import { cn } from "@/lib/utils";
@@ -149,13 +147,7 @@ export default function SettingsPage() {
   const isConnected = connectionStatus === "connected";
 
   return (
-    <div className="min-h-screen bg-background cyber-grid">
-      <Sidebar />
-      
-      <main className="pl-64 transition-all duration-300">
-        <Navbar />
-        
-        <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -366,7 +358,5 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
   );
 }

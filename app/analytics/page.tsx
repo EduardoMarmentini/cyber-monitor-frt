@@ -1,7 +1,5 @@
 "use client";
 
-import { Sidebar } from "@/components/sidebar/sidebar";
-import { Navbar } from "@/components/navbar/navbar";
 import { RssiChart } from "@/components/charts/rssi-chart";
 import { ChannelChart } from "@/components/charts/channel-chart";
 import { DevicesHistoryChart } from "@/components/charts/devices-history-chart";
@@ -31,13 +29,7 @@ export default function AnalyticsPage() {
   const totalAlerts = logs.filter((l) => l.type === "warning" || l.type === "error").length;
 
   return (
-    <div className="min-h-screen bg-background cyber-grid">
-      <Sidebar />
-      
-      <main className="pl-64 transition-all duration-300">
-        <Navbar />
-        
-        <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
           {/* Header */}
           <div>
             <h1 className="text-2xl font-mono font-bold tracking-tight glow-text-purple">
@@ -131,7 +123,5 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
   );
 }

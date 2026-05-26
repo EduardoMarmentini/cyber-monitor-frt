@@ -1,7 +1,5 @@
 "use client";
 
-import { Sidebar } from "@/components/sidebar/sidebar";
-import { Navbar } from "@/components/navbar/navbar";
 import { StatCard } from "@/components/cards/stat-card";
 import { WifiTable } from "@/components/tables/wifi-table";
 import { BleTable } from "@/components/tables/ble-table";
@@ -25,13 +23,7 @@ export default function DashboardPage() {
   const openNetworks = wifiNetworks.filter((n) => n.encryption === "Open").length;
 
   return (
-    <div className="min-h-screen bg-background cyber-grid">
-      <Sidebar />
-      
-      <main className="pl-64 transition-all duration-300">
-        <Navbar />
-        
-        <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -105,7 +97,5 @@ export default function DashboardPage() {
           {/* Terminal */}
           <TerminalLog logs={logs} />
         </div>
-      </main>
-    </div>
   );
 }

@@ -1,7 +1,5 @@
 "use client";
 
-import { Sidebar } from "@/components/sidebar/sidebar";
-import { Navbar } from "@/components/navbar/navbar";
 import { BleTable } from "@/components/tables/ble-table";
 import { StatCard } from "@/components/cards/stat-card";
 import { useScan } from "@/contexts/scan-context";
@@ -20,13 +18,7 @@ export default function BlePage() {
   const closestDevice = bleDevices.find((d) => d.rssi === strongestSignal);
 
   return (
-    <div className="min-h-screen bg-background cyber-grid">
-      <Sidebar />
-      
-      <main className="pl-64 transition-all duration-300">
-        <Navbar />
-        
-        <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
           {/* Header */}
           <div>
             <h1 className="text-2xl font-mono font-bold tracking-tight glow-text-cyan">
@@ -81,7 +73,5 @@ export default function BlePage() {
           {/* Table */}
           <BleTable devices={bleDevices} />
         </div>
-      </main>
-    </div>
   );
 }

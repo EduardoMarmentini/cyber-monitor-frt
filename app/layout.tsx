@@ -3,6 +3,8 @@ import { JetBrains_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ESP32Provider } from "@/contexts/esp32-context";
 import { ScanProvider } from "@/contexts/scan-context";
+import { Sidebar } from "@/components/sidebar/sidebar";
+import { Navbar } from "@/components/navbar/navbar";
 import "./globals.css";
 
 const inter = Inter({
@@ -45,7 +47,13 @@ export default function RootLayout({
       >
         <ESP32Provider>
           <ScanProvider>
-            {children}
+            <div className="min-h-screen bg-background cyber-grid">
+              <Sidebar />
+              <main className="pl-64 transition-all duration-300">
+                <Navbar />
+                {children}
+              </main>
+            </div>
           </ScanProvider>
         </ESP32Provider>
         {process.env.NODE_ENV === "production" && <Analytics />}

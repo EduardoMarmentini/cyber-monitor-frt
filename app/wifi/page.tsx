@@ -1,7 +1,5 @@
 "use client";
 
-import { Sidebar } from "@/components/sidebar/sidebar";
-import { Navbar } from "@/components/navbar/navbar";
 import { WifiTable } from "@/components/tables/wifi-table";
 import { RssiChart } from "@/components/charts/rssi-chart";
 import { ChannelChart } from "@/components/charts/channel-chart";
@@ -25,13 +23,7 @@ export default function WifiPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-background cyber-grid">
-      <Sidebar />
-      
-      <main className="pl-64 transition-all duration-300">
-        <Navbar />
-        
-        <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
           {/* Header */}
           <div>
             <h1 className="text-2xl font-mono font-bold tracking-tight glow-text-purple">
@@ -95,7 +87,5 @@ export default function WifiPage() {
           {/* Table */}
           <WifiTable networks={wifiNetworks} />
         </div>
-      </main>
-    </div>
   );
 }

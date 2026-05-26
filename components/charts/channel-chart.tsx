@@ -13,7 +13,7 @@ import {
 } from "recharts";
 
 interface ChannelChartProps {
-  data: Array<{ channel: number; networks: number }>;
+  data: Array<{ channel: number; count: number; networks?: string[] }>;
   className?: string;
 }
 
@@ -70,14 +70,14 @@ export function ChannelChart({ data, className }: ChannelChartProps) {
               formatter={(value) => [`${value} redes`, "Quantidade"]}
               labelFormatter={(label) => `Canal ${label}`}
             />
-            <Bar dataKey="networks" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
               {data.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={
-                    entry.networks >= 3
+                    entry.count >= 3
                       ? "oklch(0.6 0.25 25)"
-                      : entry.networks >= 2
+                      : entry.count >= 2
                       ? "oklch(0.75 0.15 80)"
                       : "oklch(0.75 0.15 195)"
                   }
