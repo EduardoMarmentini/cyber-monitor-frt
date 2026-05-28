@@ -11,5 +11,5 @@ export interface WifiScanResult {
   success: boolean;
   timestamp: number;
   count: number;
-  networks: WifiNetwork[];
+  data: WifiNetwork[];
 }

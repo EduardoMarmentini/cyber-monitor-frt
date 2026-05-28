@@ -16,6 +16,7 @@ import {
   Radio,
   Zap,
   WifiOff,
+  Clock,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -30,9 +31,18 @@ const menuItems = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const { connectionStatus, endpoint } = useESP32();
+  const { connectionStatus, endpoint, stats } = useESP32();
 
   const isConnected = connectionStatus === "connected";
+
+  const formatUptime = (seconds: number): string => {
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h ${m}m`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
 
   return (
     <aside
@@ -107,9 +117,23 @@ export function Sidebar() {
                 <Radio className="h-4 w-4 text-[oklch(0.75_0.2_145)]" />
                 <span className="text-[oklch(0.8_0.15_145)]">ESP32 Conectado</span>
               </div>
-              <div className="mt-2 flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                <Zap className="h-3 w-3" />
-                <span className="truncate">{endpoint.replace("http://", "")}</span>
+              <div className="mt-2 space-y-1 text-xs font-mono text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{endpoint.replace("http://", "")}</span>
+                </div>
+                {stats && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3 w-3 shrink-0" />
+                      <span>Uptime: {formatUptime(stats.uptime)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 pt-1">
+                      <span className="text-[oklch(0.7_0.25_300)]">{stats.wifiNetworks} WiFi</span>
+                      <span className="text-[oklch(0.75_0.15_195)]">{stats.bleDevices} BLE</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ) : (

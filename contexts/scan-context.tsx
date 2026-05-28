@@ -11,28 +11,25 @@ import {
 } from "react";
 import type { WifiNetwork } from "@/types/wifi";
 import type { BleDevice } from "@/types/ble";
+import { toast } from "sonner";
 import { esp32Api } from "@/services/esp32-api";
+import { websocketService } from "@/services/websocket";
 import { useESP32 } from "./esp32-context";
 
 interface ScanContextType {
-  // Dados
   wifiNetworks: WifiNetwork[];
   bleDevices: BleDevice[];
-  
-  // Estado
+
   isScanning: boolean;
   lastWifiScan: Date | null;
   lastBleScan: Date | null;
-  
-  // Historico para graficos
+
   rssiHistory: Array<{ time: string; [key: string]: number | string }>;
   channelData: Array<{ channel: number; count: number; networks: string[] }>;
   scanHistory: Array<{ time: string; wifi: number; ble: number }>;
 
-  // Logs
   logs: Array<{ timestamp: Date; type: "info" | "success" | "warning" | "error"; message: string }>;
-  
-  // Acoes
+
   scanWifi: () => Promise<void>;
   scanBle: () => Promise<void>;
   scanAll: () => Promise<void>;
@@ -43,23 +40,37 @@ interface ScanContextType {
 
 const ScanContext = createContext<ScanContextType | undefined>(undefined);
 
+function updateOrAdd<T>(
+  list: T[],
+  key: keyof T,
+  item: T
+): T[] {
+  const index = list.findIndex((entry) => entry[key] === item[key]);
+  if (index >= 0) {
+    const updated = [...list];
+    updated[index] = item;
+    return updated;
+  }
+  return [item, ...list];
+}
+
 export function ScanProvider({ children }: { children: ReactNode }) {
   const { connectionStatus, wifiScanInterval, bleScanInterval } = useESP32();
-  
+
   const [wifiNetworks, setWifiNetworks] = useState<WifiNetwork[]>([]);
   const [bleDevices, setBleDevices] = useState<BleDevice[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [lastWifiScan, setLastWifiScan] = useState<Date | null>(null);
   const [lastBleScan, setLastBleScan] = useState<Date | null>(null);
-  
+
   const [rssiHistory, setRssiHistory] = useState<Array<{ time: string; [key: string]: number | string }>>([]);
   const [channelData, setChannelData] = useState<Array<{ channel: number; count: number; networks: string[] }>>([]);
   const [scanHistory, setScanHistory] = useState<Array<{ time: string; wifi: number; ble: number }>>([]);
-  
+
   const [logs, setLogs] = useState<Array<{ timestamp: Date; type: "info" | "success" | "warning" | "error"; message: string }>>([
     { timestamp: new Date(), type: "info", message: "Sistema iniciado. Aguardando conexao com ESP32..." },
   ]);
-  
+
   const autoScanRef = useRef<{ wifi: NodeJS.Timeout | null; ble: NodeJS.Timeout | null }>({
     wifi: null,
     ble: null,
@@ -71,7 +82,7 @@ export function ScanProvider({ children }: { children: ReactNode }) {
 
   const updateChannelData = useCallback((networks: WifiNetwork[]) => {
     const channelMap = new Map<number, { count: number; networks: string[] }>();
-    
+
     networks.forEach((network) => {
       const existing = channelMap.get(network.channel) || { count: 0, networks: [] };
       existing.count++;
@@ -91,12 +102,11 @@ export function ScanProvider({ children }: { children: ReactNode }) {
   const updateRssiHistory = useCallback((networks: WifiNetwork[]) => {
     const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const entry: { time: string; [key: string]: number | string } = { time };
-    
-    // Pega os top 5 networks por sinal
+
     const topNetworks = [...networks]
       .sort((a, b) => b.rssi - a.rssi)
       .slice(0, 5);
-    
+
     topNetworks.forEach((network) => {
       entry[network.ssid] = network.rssi;
     });
@@ -119,15 +129,14 @@ export function ScanProvider({ children }: { children: ReactNode }) {
       setLastWifiScan(new Date());
       updateChannelData(networks);
       updateRssiHistory(networks);
-      
+
       const openCount = networks.filter((n) => n.encryption === "Open").length;
       addLog("success", `${networks.length} redes Wi-Fi detectadas`);
-      
+
       if (openCount > 0) {
         addLog("warning", `${openCount} rede(s) sem criptografia detectada(s)`);
       }
 
-      // Atualiza historico de scan
       setScanHistory((prev) => {
         const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
         const lastEntry = prev[prev.length - 1];
@@ -137,7 +146,9 @@ export function ScanProvider({ children }: { children: ReactNode }) {
         return [...prev.slice(-19), { time, wifi: networks.length, ble: bleDevices.length }];
       });
     } catch (err) {
-      addLog("error", `Erro no scan Wi-Fi: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
+      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      addLog("error", `Erro no scan Wi-Fi: ${msg}`);
+      toast.error("Falha no scan Wi-Fi", { description: msg });
     } finally {
       setIsScanning(false);
     }
@@ -158,7 +169,6 @@ export function ScanProvider({ children }: { children: ReactNode }) {
       setLastBleScan(new Date());
       addLog("success", `${devices.length} dispositivos BLE encontrados`);
 
-      // Atualiza historico de scan
       setScanHistory((prev) => {
         const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
         const lastEntry = prev[prev.length - 1];
@@ -168,7 +178,9 @@ export function ScanProvider({ children }: { children: ReactNode }) {
         return [...prev.slice(-19), { time, wifi: wifiNetworks.length, ble: devices.length }];
       });
     } catch (err) {
-      addLog("error", `Erro no scan BLE: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
+      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      addLog("error", `Erro no scan BLE: ${msg}`);
+      toast.error("Falha no scan BLE", { description: msg });
     } finally {
       setIsScanning(false);
     }
@@ -184,10 +196,8 @@ export function ScanProvider({ children }: { children: ReactNode }) {
 
     addLog("info", `Auto-scan iniciado: Wi-Fi a cada ${wifiScanInterval}s, BLE a cada ${bleScanInterval}s`);
 
-    // Faz scan inicial
     scanAll();
 
-    // Configura intervalos
     autoScanRef.current.wifi = setInterval(() => {
       scanWifi();
     }, wifiScanInterval * 1000);
@@ -208,6 +218,53 @@ export function ScanProvider({ children }: { children: ReactNode }) {
     }
     addLog("info", "Auto-scan parado");
   }, [addLog]);
+
+  // WebSocket — atualizacoes em tempo real
+  useEffect(() => {
+    if (connectionStatus !== "connected") {
+      websocketService.disconnect();
+      return;
+    }
+
+    const baseUrl = esp32Api.getBaseUrl();
+    if (!baseUrl) return;
+
+    addLog("info", "Conectando WebSocket para atualizacoes em tempo real...");
+
+    websocketService.connect(baseUrl, {
+      onWifiUpdate: (network) => {
+        const enriched: WifiNetwork = { ...network, lastSeen: Date.now() };
+        setWifiNetworks((prev) => {
+          const updated = updateOrAdd(prev, "bssid", enriched);
+          updateChannelData(updated);
+          updateRssiHistory(updated);
+          return updated;
+        });
+      },
+      onBleUpdate: (device) => {
+        const enriched: BleDevice = { ...device, lastSeen: Date.now() };
+        setBleDevices((prev) => updateOrAdd(prev, "mac", enriched));
+      },
+      onStatusChange: (connected) => {
+        if (connected) {
+          addLog("success", "WebSocket conectado");
+        } else {
+          addLog("warning", "WebSocket desconectado — tentando reconectar...");
+        }
+      },
+      onError: () => {
+        addLog("error", "Erro na conexao WebSocket");
+        toast.error("Conexão WebSocket perdida", {
+          description: "Tentando reconectar...",
+        });
+      },
+    });
+
+    return () => {
+      websocketService.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionStatus]);
 
   // Limpa intervalos ao desmontar
   useEffect(() => {

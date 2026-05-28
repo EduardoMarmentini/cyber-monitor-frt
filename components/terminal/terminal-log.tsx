@@ -50,7 +50,7 @@ export function TerminalLog({ logs, className }: TerminalLogProps) {
       <div className="h-[200px] overflow-y-auto p-4 font-mono text-xs">
         {logs.map((log, index) => (
           <div key={index} className="flex items-start gap-2 py-0.5">
-            <span className="text-muted-foreground shrink-0">
+            <span className="text-muted-foreground shrink-0" suppressHydrationWarning>
               [{log.timestamp.toLocaleTimeString("pt-BR")}]
             </span>
             <span className={cn("shrink-0 font-bold", typeColors[log.type])}>

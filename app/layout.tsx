@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { Toaster } from "@/components/ui/sonner";
 import { ESP32Provider } from "@/contexts/esp32-context";
 import { ScanProvider } from "@/contexts/scan-context";
 import { Sidebar } from "@/components/sidebar/sidebar";
@@ -56,6 +57,7 @@ export default function RootLayout({
             </div>
           </ScanProvider>
         </ESP32Provider>
+        <Toaster />
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>

@@ -11,5 +11,5 @@ export interface BleScanResult {
   success: boolean;
   timestamp: number;
   count: number;
-  devices: BleDevice[];
+  data: BleDevice[];
 }

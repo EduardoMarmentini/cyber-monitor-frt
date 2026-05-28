@@ -8,27 +8,28 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { esp32Api, type ESP32Config, type ESP32Status } from "@/services/esp32-api";
+import { toast } from "sonner";
+import { esp32Api, type ESP32Config } from "@/services/esp32-api";
+import type { Stats } from "@/types/stats";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
 interface ESP32ContextType {
-  // Estado de conexao
   connectionStatus: ConnectionStatus;
   endpoint: string;
-  status: ESP32Status | null;
+  stats: Stats | null;
+  isOnline: boolean;
   error: string | null;
 
-  // Configuracoes de scan
   wifiScanInterval: number;
   bleScanInterval: number;
 
-  // Acoes
   connect: (config: ESP32Config) => Promise<boolean>;
   disconnect: () => void;
   setEndpoint: (url: string) => void;
   setScanIntervals: (wifi: number, ble: number) => void;
-  refreshStatus: () => Promise<void>;
+  refreshStats: () => Promise<void>;
+  healthCheck: () => Promise<boolean>;
 }
 
 const ESP32Context = createContext<ESP32ContextType | undefined>(undefined);
@@ -44,7 +45,8 @@ interface StoredConfig {
 export function ESP32Provider({ children }: { children: ReactNode }) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [endpoint, setEndpointState] = useState("");
-  const [status, setStatus] = useState<ESP32Status | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wifiScanInterval, setWifiScanInterval] = useState(5);
   const [bleScanInterval, setBleScanInterval] = useState(10);
@@ -81,19 +83,24 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
     saveConfig();
   }, [saveConfig]);
 
-  // Verificar conexao periodicamente
+  // Health check periodico
   useEffect(() => {
     if (connectionStatus !== "connected" || !endpoint) return;
 
-    const checkConnection = async () => {
-      const isOnline = await esp32Api.ping();
-      if (!isOnline) {
+    const check = async () => {
+      const online = await esp32Api.healthCheck();
+      setIsOnline(online);
+      if (!online) {
         setConnectionStatus("error");
         setError("Conexao perdida com o ESP32");
+        toast.error("Conexão perdida", {
+          description: "ESP32 não está respondendo",
+        });
       }
     };
 
-    const interval = setInterval(checkConnection, 10000);
+    check();
+    const interval = setInterval(check, 10000);
     return () => clearInterval(interval);
   }, [connectionStatus, endpoint]);
 
@@ -116,13 +123,13 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const result = await esp32Api.connect(config);
+      const result = await esp32Api.configureWifi(config);
       if (result.success) {
         setConnectionStatus("connected");
         return true;
       } else {
         setConnectionStatus("error");
-        setError("Falha ao conectar");
+        setError(result.message || "Falha ao conectar");
         return false;
       }
     } catch (err) {
@@ -135,7 +142,8 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
   const disconnect = useCallback(() => {
     setConnectionStatus("disconnected");
     setEndpointState("");
-    setStatus(null);
+    setStats(null);
+    setIsOnline(false);
     setError(null);
     esp32Api.setBaseUrl("");
     localStorage.removeItem(STORAGE_KEY);
@@ -146,23 +154,29 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
     setBleScanInterval(ble);
   }, []);
 
-  const refreshStatus = useCallback(async () => {
+  const refreshStats = useCallback(async () => {
     if (connectionStatus !== "connected") return;
-    
+
     try {
-      const newStatus = await esp32Api.getStatus();
-      setStatus(newStatus);
+      const newStats = await esp32Api.getStats();
+      setStats(newStats);
+      setIsOnline(true);
     } catch (err) {
-      console.error("Erro ao buscar status:", err);
+      console.error("Erro ao buscar stats:", err);
     }
   }, [connectionStatus]);
+
+  const healthCheck = useCallback(async (): Promise<boolean> => {
+    return esp32Api.healthCheck();
+  }, []);
 
   return (
     <ESP32Context.Provider
       value={{
         connectionStatus,
         endpoint,
-        status,
+        stats,
+        isOnline,
         error,
         wifiScanInterval,
         bleScanInterval,
@@ -170,7 +184,8 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
         disconnect,
         setEndpoint,
         setScanIntervals,
-        refreshStatus,
+        refreshStats,
+        healthCheck,
       }}
     >
       {children}

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useESP32 } from "@/contexts/esp32-context";
 import { useScan } from "@/contexts/scan-context";
+import { esp32Api } from "@/services/esp32-api";
 import { cn } from "@/lib/utils";
 import {
   Wifi,
@@ -42,7 +44,7 @@ export default function SettingsPage() {
     setScanIntervals,
     disconnect,
   } = useESP32();
-  
+
   const { addLog } = useScan();
 
   const [localSettings, setLocalSettings] = useState<LocalSettings>({
@@ -58,28 +60,69 @@ export default function SettingsPage() {
 
   const [localEndpoint, setLocalEndpoint] = useState(endpoint);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
+  const [connectedIp, setConnectedIp] = useState<string | null>(null);
 
   const handleConnect = async (): Promise<void> => {
     if (
       !wifiConfig.ssid ||
+      !localEndpoint ||
       (wifiConfig.secureNetwork && !wifiConfig.password)
     )
       return;
 
     setIsConnecting(true);
-    addLog("info", `Tentando conectar ao ESP32...`);
+    setConnectionMessage(null);
+    setConnectedIp(null);
+    addLog("info", `Conectando ao ESP32 em ${localEndpoint}...`);
 
-    // Aqui voce faria a chamada real para configurar o Wi-Fi do ESP
-    // Por agora, simula o sucesso da conexao
-    setTimeout(() => {
-      if (localEndpoint) {
-        setEndpoint(localEndpoint);
-        addLog("success", `Conectado ao ESP32 em ${localEndpoint}`);
-      } else {
-        addLog("success", `Conectado ao ESP32`);
+    try {
+      // Configura URL sem marcar como conectado ainda
+      esp32Api.setBaseUrl(localEndpoint);
+
+      // Health check primeiro
+      addLog("info", "Verificando conexao com o ESP32...");
+      const isOnline = await esp32Api.healthCheck();
+      if (!isOnline) {
+        throw new Error("ESP32 não está respondendo");
       }
+
+      // Configurar WiFi
+      addLog("info", `Configurando rede Wi-Fi ${wifiConfig.ssid}...`);
+      const result = await esp32Api.configureWifi({
+        ssid: wifiConfig.ssid,
+        password: wifiConfig.secureNetwork ? wifiConfig.password : undefined,
+      });
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      // So marca como conectado apos sucesso
+      setEndpoint(localEndpoint);
+      setConnectionMessage(result.message);
+      addLog("success", result.message);
+
+      if (result.ip) {
+        setConnectedIp(result.ip);
+        addLog("info", `ESP32 conectado — IP: ${result.ip}`);
+      }
+
+      toast.success("ESP32 conectado", {
+        description: result.ip
+          ? `Conectado em ${result.ip}`
+          : `Rede ${wifiConfig.ssid} configurada`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      setConnectionMessage(msg);
+      addLog("error", msg);
+      toast.error("Erro de conexão", {
+        description: msg,
+      });
+    } finally {
       setIsConnecting(false);
-    }, 1500);
+    }
   };
 
   const handleDisconnect = () => {
@@ -87,11 +130,16 @@ export default function SettingsPage() {
     disconnect();
     setLocalEndpoint("");
     setWifiConfig({ ssid: "", password: "", secureNetwork: false });
+    setConnectionMessage(null);
+    setConnectedIp(null);
   };
 
   const handleSave = () => {
     setScanIntervals(localSettings.wifiScanInterval, localSettings.bleScanInterval);
     addLog("success", "Configuracoes de scan salvas");
+    toast.success("Configurações salvas", {
+      description: `Wi-Fi: ${localSettings.wifiScanInterval}s | BLE: ${localSettings.bleScanInterval}s`,
+    });
   };
 
   const handleReset = () => {
@@ -109,12 +157,12 @@ export default function SettingsPage() {
         bgColor: "bg-[oklch(0.75_0.15_80/0.1)]",
       };
     }
-    
+
     switch (connectionStatus) {
       case "disconnected":
         return {
           icon: XCircle,
-          text: "Desconectado",
+          text: connectionMessage || "Desconectado",
           color: "text-muted-foreground",
           bgColor: "bg-muted/50",
         };
@@ -128,14 +176,14 @@ export default function SettingsPage() {
       case "connected":
         return {
           icon: CheckCircle2,
-          text: "Conectado",
+          text: connectionMessage || "Conectado",
           color: "text-[oklch(0.75_0.2_145)]",
           bgColor: "bg-[oklch(0.75_0.2_145/0.1)]",
         };
       case "error":
         return {
           icon: XCircle,
-          text: "Erro na conexao",
+          text: connectionMessage || "Erro na conexao",
           color: "text-[oklch(0.65_0.25_25)]",
           bgColor: "bg-[oklch(0.65_0.25_25/0.1)]",
         };
@@ -235,6 +283,23 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block font-mono text-xs text-muted-foreground mb-2">
+                    Endpoint do ESP32
+                  </label>
+                  <input
+                    type="text"
+                    value={localEndpoint}
+                    onChange={(e) => setLocalEndpoint(e.target.value)}
+                    placeholder="http://esp32.local:8080"
+                    disabled={isConnected}
+                    className="w-full h-10 rounded-lg border border-border/50 bg-input px-4 font-mono text-sm placeholder:text-muted-foreground/50 focus:border-[oklch(0.7_0.25_300/0.5)] focus:outline-none focus:ring-1 focus:ring-[oklch(0.7_0.25_300/0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <p className="mt-2 text-[11px] text-muted-foreground/80 font-mono">
+                    URL base do ESP32 (ex: http://esp32.local:8080)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-mono text-xs text-muted-foreground mb-2">
                     Nome da Rede (SSID)
                   </label>
                   <input
@@ -274,23 +339,6 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block font-mono text-xs text-muted-foreground mb-2">
-                    Endpoint do ESP32
-                  </label>
-                  <input
-                    type="text"
-                    value={localEndpoint}
-                    onChange={(e) => setLocalEndpoint(e.target.value)}
-                    placeholder="http://192.168.0.100"
-                    disabled={true}
-                    className="w-full h-10 rounded-lg border border-border/50 bg-input px-4 font-mono text-sm placeholder:text-muted-foreground/50 focus:border-[oklch(0.7_0.25_300/0.5)] focus:outline-none focus:ring-1 focus:ring-[oklch(0.7_0.25_300/0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <p className="mt-2 text-[11px] text-muted-foreground/80 font-mono">
-                    Campo opcional; apenas fallback visual para o IP/endereço usado nas requisições.
-                  </p>
-                </div>
-
                 {/* Status */}
                 <div className={cn("rounded-lg p-4 border", statusInfo.bgColor, "border-border/30")}>
                   <div className="flex items-center gap-2">
@@ -299,7 +347,18 @@ export default function SettingsPage() {
                       {statusInfo.text}
                     </span>
                   </div>
-                  
+
+                  {connectedIp && (
+                    <div className="mt-2">
+                      <span className="font-mono text-xs text-muted-foreground">
+                        IP atribuido:{" "}
+                      </span>
+                      <code className="font-mono text-xs text-[oklch(0.85_0.2_300)]">
+                        {connectedIp}
+                      </code>
+                    </div>
+                  )}
+
                   {isConnected && endpoint && (
                     <div className="mt-3">
                       <label className="block font-mono text-xs text-muted-foreground mb-1">
@@ -327,6 +386,7 @@ export default function SettingsPage() {
                       onClick={handleConnect}
                       disabled={
                         !wifiConfig.ssid ||
+                        !localEndpoint ||
                         isConnecting ||
                         (wifiConfig.secureNetwork && !wifiConfig.password)
                       }

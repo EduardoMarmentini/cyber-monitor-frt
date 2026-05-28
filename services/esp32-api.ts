@@ -1,11 +1,14 @@
 import type { WifiNetwork, WifiScanResult } from "@/types/wifi";
 import type { BleDevice, BleScanResult } from "@/types/ble";
+import type { Stats, StatsResponse, WifiConfigPayload, WifiConfigResponse } from "@/types/stats";
 
+// Mantido para compatibilidade — será removido na Fase 3
 export interface ESP32Config {
   ssid: string;
   password: string;
 }
 
+// Mantido para compatibilidade — será removido na Fase 3
 export interface ESP32Status {
   online: boolean;
   ip: string;
@@ -18,7 +21,7 @@ class ESP32ApiService {
   private baseUrl: string = "";
 
   setBaseUrl(url: string) {
-    this.baseUrl = url.replace(/\/$/, ""); // Remove trailing slash
+    this.baseUrl = url.replace(/\/$/, "");
   }
 
   getBaseUrl(): string {
@@ -35,7 +38,7 @@ class ESP32ApiService {
     }
 
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -51,63 +54,106 @@ class ESP32ApiService {
     return response.json();
   }
 
-  // Conexao Wi-Fi
-  async connect(config: ESP32Config): Promise<{ success: boolean; ip: string }> {
-    return this.request("/wifi/connect", {
-      method: "POST",
-      body: JSON.stringify(config),
-    });
+  // ─── Health ───────────────────────────────────────────
+
+  // GET /
+  async healthCheck(): Promise<boolean> {
+    if (!this.baseUrl) return false;
+
+    try {
+      const response = await fetch(this.baseUrl, { method: "GET" });
+      const text = await response.text();
+      return text === "OK";
+    } catch {
+      return false;
+    }
   }
 
-  async disconnect(): Promise<{ success: boolean }> {
-    return this.request("/wifi/disconnect", { method: "POST" });
+  // ─── Stats ────────────────────────────────────────────
+
+  // GET /api/stats
+  async getStats(): Promise<Stats> {
+    const result = await this.request<StatsResponse>("/api/stats");
+    return result.data;
   }
 
-  // Status do ESP32
-  async getStatus(): Promise<ESP32Status> {
-    return this.request("/status");
-  }
+  // ─── Wi-Fi Scan ───────────────────────────────────────
 
-  // Scan Wi-Fi
+  // GET /api/wifi
   async scanWifi(): Promise<WifiScanResult> {
-    return this.request("/scan/wifi");
+    return this.request<WifiScanResult>("/api/wifi");
   }
 
   async getWifiNetworks(): Promise<WifiNetwork[]> {
     const result = await this.scanWifi();
-    return result.networks;
+    return result.data;
   }
 
-  // Scan BLE
+  // ─── BLE Scan ─────────────────────────────────────────
+
+  // GET /api/ble
   async scanBle(): Promise<BleScanResult> {
-    return this.request("/scan/ble");
+    return this.request<BleScanResult>("/api/ble");
   }
 
   async getBleDevices(): Promise<BleDevice[]> {
     const result = await this.scanBle();
-    return result.devices;
+    return result.data;
   }
 
-  // Configuracoes
-  async getConfig(): Promise<{ wifiInterval: number; bleInterval: number }> {
-    return this.request("/config");
+  // ─── WiFi Config ──────────────────────────────────────
+
+  // GET /api/config/wifi
+  async getWifiConfig(): Promise<{ ssid: string }> {
+    return this.request<{ ssid: string }>("/api/config/wifi");
   }
 
-  async setConfig(config: { wifiInterval?: number; bleInterval?: number }): Promise<{ success: boolean }> {
-    return this.request("/config", {
+  // POST /api/config/wifi
+  async configureWifi(payload: WifiConfigPayload): Promise<WifiConfigResponse> {
+    return this.request<WifiConfigResponse>("/api/config/wifi", {
       method: "POST",
-      body: JSON.stringify(config),
+      body: JSON.stringify(payload),
     });
   }
 
-  // Ping para verificar conexao
+  // ─── Deprecated — mantido para compatibilidade ────────
+
+  /** @deprecated Use configureWifi() */
+  async connect(config: ESP32Config): Promise<{ success: boolean; ip: string }> {
+    const result = await this.configureWifi(config);
+    return { success: result.success, ip: result.ip ?? "" };
+  }
+
+  /** @deprecated Não existe mais na API */
+  async disconnect(): Promise<{ success: boolean }> {
+    return { success: true };
+  }
+
+  /** @deprecated Use getStats() */
+  async getStatus(): Promise<ESP32Status> {
+    const stats = await this.getStats();
+    return {
+      online: true,
+      ip: "",
+      rssi: 0,
+      freeHeap: 0,
+      uptime: stats.uptime,
+    };
+  }
+
+  /** @deprecated Use healthCheck() */
   async ping(): Promise<boolean> {
-    try {
-      await this.request("/ping");
-      return true;
-    } catch {
-      return false;
-    }
+    return this.healthCheck();
+  }
+
+  /** @deprecated Não existe mais na API */
+  async getConfig(): Promise<{ wifiInterval: number; bleInterval: number }> {
+    return { wifiInterval: 5, bleInterval: 10 };
+  }
+
+  /** @deprecated Não existe mais na API */
+  async setConfig(): Promise<{ success: boolean }> {
+    return { success: true };
   }
 }
 
