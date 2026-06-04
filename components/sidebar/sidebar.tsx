@@ -8,7 +8,8 @@ import { useESP32 } from "@/contexts/esp32-context";
 import {
   LayoutDashboard,
   Wifi,
-  Bluetooth,
+  // Bluetooth desativado
+  // Bluetooth,
   BarChart3,
   Settings,
   ChevronLeft,
@@ -23,7 +24,8 @@ import Image from "next/image";
 const menuItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/wifi", label: "Wi-Fi Scanner", icon: Wifi },
-  { href: "/ble", label: "BLE Scanner", icon: Bluetooth },
+  // BLE desativado
+  // { href: "/ble", label: "BLE Scanner", icon: Bluetooth },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Configuracoes", icon: Settings },
 ];
@@ -130,7 +132,8 @@ export function Sidebar() {
                     </div>
                     <div className="flex items-center gap-3 pt-1">
                       <span className="text-[oklch(0.7_0.25_300)]">{stats.wifiNetworks} WiFi</span>
-                      <span className="text-[oklch(0.75_0.15_195)]">{stats.bleDevices} BLE</span>
+                      {/* BLE desativado */}
+                      {/* <span className="text-[oklch(0.75_0.15_195)]">{stats.bleDevices} BLE</span> */}
                     </div>
                   </>
                 )}

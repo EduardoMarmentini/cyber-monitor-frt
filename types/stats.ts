@@ -1,6 +1,7 @@
 export interface Stats {
   wifiNetworks: number;
-  bleDevices: number;
+  // bleDevices desativado (Arduino limitado)
+  // bleDevices: number;
   uptime: number;
 }
 

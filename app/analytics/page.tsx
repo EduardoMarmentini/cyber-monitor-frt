@@ -9,21 +9,23 @@ import { useESP32 } from "@/contexts/esp32-context";
 import { BarChart3, TrendingUp, Activity, Zap } from "lucide-react";
 
 export default function AnalyticsPage() {
-  const { wifiNetworks, bleDevices, rssiHistory, channelData, scanHistory, logs } = useScan();
+  const { wifiNetworks, rssiHistory, channelData, scanHistory, logs } = useScan(); // bleDevices removido
   const { connectionStatus } = useESP32();
 
   const avgWifi = scanHistory.length > 0 
     ? Math.round(scanHistory.reduce((a, b) => a + b.wifi, 0) / scanHistory.length) 
     : 0;
-  const avgBle = scanHistory.length > 0 
-    ? Math.round(scanHistory.reduce((a, b) => a + b.ble, 0) / scanHistory.length) 
-    : 0;
+  // BLE desativado
+  // const avgBle = scanHistory.length > 0
+  //   ? Math.round(scanHistory.reduce((a, b) => a + b.ble, 0) / scanHistory.length)
+  //   : 0;
   const peakWifi = scanHistory.length > 0 
     ? Math.max(...scanHistory.map((h) => h.wifi)) 
     : 0;
-  const peakBle = scanHistory.length > 0 
-    ? Math.max(...scanHistory.map((h) => h.ble)) 
-    : 0;
+  // BLE desativado
+  // const peakBle = scanHistory.length > 0
+  //   ? Math.max(...scanHistory.map((h) => h.ble))
+  //   : 0;
 
   const totalScans = scanHistory.length;
   const totalAlerts = logs.filter((l) => l.type === "warning" || l.type === "error").length;
@@ -58,13 +60,14 @@ export default function AnalyticsPage() {
               icon={BarChart3}
               variant="purple"
             />
-            <StatCard
+            {/* BLE desativado */}
+            {/* <StatCard
               title="Media BLE"
               value={avgBle}
               subtitle="Dispositivos/scan"
               icon={Activity}
               variant="cyan"
-            />
+            /> */}
             <StatCard
               title="Pico Wi-Fi"
               value={peakWifi}
@@ -72,13 +75,14 @@ export default function AnalyticsPage() {
               icon={TrendingUp}
               variant="green"
             />
-            <StatCard
+            {/* BLE desativado */}
+            {/* <StatCard
               title="Pico BLE"
               value={peakBle}
               subtitle="Maximo detectado"
               icon={Zap}
               variant="pink"
-            />
+            /> */}
           </div>
 
           {/* Charts */}
@@ -105,10 +109,11 @@ export default function AnalyticsPage() {
                   <span className="font-mono text-xs text-muted-foreground">Redes Wi-Fi Atuais</span>
                   <span className="font-mono text-sm font-bold text-[oklch(0.75_0.15_195)]">{wifiNetworks.length}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-border/30">
+                {/* BLE desativado */}
+                {/* <div className="flex items-center justify-between py-2 border-b border-border/30">
                   <span className="font-mono text-xs text-muted-foreground">Dispositivos BLE Atuais</span>
                   <span className="font-mono text-sm font-bold text-[oklch(0.75_0.15_195)]">{bleDevices.length}</span>
-                </div>
+                </div> */}
                 <div className="flex items-center justify-between py-2 border-b border-border/30">
                   <span className="font-mono text-xs text-muted-foreground">Alertas Gerados</span>
                   <span className="font-mono text-sm font-bold text-[oklch(0.75_0.15_80)]">{totalAlerts}</span>

@@ -20,7 +20,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "CYBER.MONITOR | Network Monitor",
-  description: "Dashboard de monitoramento de redes Wi-Fi e BLE em tempo real",
+  description: "Dashboard de monitoramento de redes Wi-Fi em tempo real",
   generator: "v0.app",
   icons: {
     icon: [

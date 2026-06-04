@@ -13,7 +13,7 @@ import {
 } from "recharts";
 
 interface DevicesHistoryChartProps {
-  data: Array<{ time: string; wifi: number; ble: number }>;
+  data: Array<{ time: string; wifi: number }>;
   className?: string;
 }
 
@@ -81,7 +81,8 @@ export function DevicesHistoryChart({ data, className }: DevicesHistoryChartProp
                 dot={{ fill: "oklch(0.7 0.25 300)", strokeWidth: 0, r: 3 }}
                 activeDot={{ r: 5, fill: "oklch(0.85 0.2 300)" }}
               />
-              <Line
+              {/* BLE desativado */}
+              {/* <Line
                 type="monotone"
                 dataKey="ble"
                 name="Dispositivos BLE"
@@ -89,7 +90,7 @@ export function DevicesHistoryChart({ data, className }: DevicesHistoryChartProp
                 strokeWidth={2}
                 dot={{ fill: "oklch(0.75 0.15 195)", strokeWidth: 0, r: 3 }}
                 activeDot={{ r: 5, fill: "oklch(0.85 0.12 195)" }}
-              />
+              /> */}
             </LineChart>
           </ResponsiveContainer>
         ) : (

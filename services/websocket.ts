@@ -1,13 +1,16 @@
 import type { WifiNetwork } from "@/types/wifi";
-import type { BleDevice } from "@/types/ble";
+// BLE desativado (Arduino limitado)
+// import type { BleDevice } from "@/types/ble";
 
 export type WsEventPayload =
-  | { event: "WIFI_UPDATE"; timestamp: number; payload: WifiNetwork }
-  | { event: "BLE_UPDATE"; timestamp: number; payload: BleDevice };
+  | { event: "WIFI_UPDATE"; timestamp: number; payload: WifiNetwork };
+  // BLE desativado
+  // | { event: "BLE_UPDATE"; timestamp: number; payload: BleDevice };
 
 export interface WsCallbacks {
   onWifiUpdate?: (network: WifiNetwork) => void;
-  onBleUpdate?: (device: BleDevice) => void;
+  // BLE desativado
+  // onBleUpdate?: (device: BleDevice) => void;
   onStatusChange?: (connected: boolean) => void;
   onError?: (error: Event) => void;
 }
@@ -81,9 +84,11 @@ class WebSocketService {
 
         if (data.event === "WIFI_UPDATE") {
           this.callbacks.onWifiUpdate?.(data.payload);
-        } else if (data.event === "BLE_UPDATE") {
-          this.callbacks.onBleUpdate?.(data.payload);
         }
+        // BLE desativado
+        // else if (data.event === "BLE_UPDATE") {
+        //   this.callbacks.onBleUpdate?.(data.payload);
+        // }
       } catch {
         // Ignora mensagens que não são JSON válido
       }

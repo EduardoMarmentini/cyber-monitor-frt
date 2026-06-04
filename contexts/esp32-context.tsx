@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import { esp32Api, type ESP32Config } from "@/services/esp32-api";
+import { esp32Api } from "@/services/esp32-api";
 import type { Stats } from "@/types/stats";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
@@ -20,14 +20,11 @@ interface ESP32ContextType {
   stats: Stats | null;
   isOnline: boolean;
   error: string | null;
-
   wifiScanInterval: number;
-  bleScanInterval: number;
-
-  connect: (config: ESP32Config) => Promise<boolean>;
+  manualConnect: (endpoint: string) => Promise<boolean>;
   disconnect: () => void;
   setEndpoint: (url: string) => void;
-  setScanIntervals: (wifi: number, ble: number) => void;
+  setScanIntervals: (wifi: number) => void;
   refreshStats: () => Promise<void>;
   healthCheck: () => Promise<boolean>;
 }
@@ -35,11 +32,11 @@ interface ESP32ContextType {
 const ESP32Context = createContext<ESP32ContextType | undefined>(undefined);
 
 const STORAGE_KEY = "esp32_config";
+const DEFAULT_ENDPOINT = "http://esp32.local:8080";
 
 interface StoredConfig {
   endpoint: string;
   wifiScanInterval: number;
-  bleScanInterval: number;
 }
 
 export function ESP32Provider({ children }: { children: ReactNode }) {
@@ -49,39 +46,50 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wifiScanInterval, setWifiScanInterval] = useState(5);
-  const [bleScanInterval, setBleScanInterval] = useState(10);
 
-  // Carregar configuracoes salvas
+  // Carregar config salva + tentar conexao automatica
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const config: StoredConfig = JSON.parse(stored);
-        if (config.endpoint) {
-          setEndpointState(config.endpoint);
-          esp32Api.setBaseUrl(config.endpoint);
+    const init = async () => {
+      let targetEndpoint = DEFAULT_ENDPOINT;
+
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const config: StoredConfig = JSON.parse(stored);
+          if (config.endpoint) targetEndpoint = config.endpoint;
+          if (config.wifiScanInterval) setWifiScanInterval(config.wifiScanInterval);
         }
-        if (config.wifiScanInterval) setWifiScanInterval(config.wifiScanInterval);
-        if (config.bleScanInterval) setBleScanInterval(config.bleScanInterval);
+      } catch {
+        // ignore
       }
-    } catch {
-      // Ignora erros de parse
-    }
+
+      const online = await esp32Api.checkConnection(targetEndpoint);
+      if (online) {
+        setEndpointState(targetEndpoint);
+        esp32Api.setBaseUrl(targetEndpoint);
+        setConnectionStatus("connected");
+        setIsOnline(true);
+      } else if (targetEndpoint !== DEFAULT_ENDPOINT) {
+        const fallbackOnline = await esp32Api.checkConnection(DEFAULT_ENDPOINT);
+        if (fallbackOnline) {
+          setEndpointState(DEFAULT_ENDPOINT);
+          esp32Api.setBaseUrl(DEFAULT_ENDPOINT);
+          setConnectionStatus("connected");
+          setIsOnline(true);
+        }
+      }
+    };
+
+    init();
   }, []);
 
-  // Salvar configuracoes
-  const saveConfig = useCallback(() => {
-    const config: StoredConfig = {
-      endpoint,
-      wifiScanInterval,
-      bleScanInterval,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  }, [endpoint, wifiScanInterval, bleScanInterval]);
-
+  // Salvar config
   useEffect(() => {
-    saveConfig();
-  }, [saveConfig]);
+    if (endpoint) {
+      const config: StoredConfig = { endpoint, wifiScanInterval };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    }
+  }, [endpoint, wifiScanInterval]);
 
   // Health check periodico
   useEffect(() => {
@@ -100,7 +108,7 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
     };
 
     check();
-    const interval = setInterval(check, 10000);
+    const interval = setInterval(check, 60000);
     return () => clearInterval(interval);
   }, [connectionStatus, endpoint]);
 
@@ -113,23 +121,21 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const connect = useCallback(async (config: ESP32Config): Promise<boolean> => {
-    if (!endpoint) {
-      setError("Endpoint nao configurado");
-      return false;
-    }
-
+  const manualConnect = useCallback(async (endpointUrl: string): Promise<boolean> => {
     setConnectionStatus("connecting");
     setError(null);
 
     try {
-      const result = await esp32Api.configureWifi(config);
-      if (result.success) {
+      const online = await esp32Api.checkConnection(endpointUrl);
+      if (online) {
+        setEndpointState(endpointUrl);
+        esp32Api.setBaseUrl(endpointUrl);
         setConnectionStatus("connected");
+        setIsOnline(true);
         return true;
       } else {
         setConnectionStatus("error");
-        setError(result.message || "Falha ao conectar");
+        setError("ESP32 não está respondendo em " + endpointUrl);
         return false;
       }
     } catch (err) {
@@ -137,7 +143,7 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
       return false;
     }
-  }, [endpoint]);
+  }, []);
 
   const disconnect = useCallback(() => {
     setConnectionStatus("disconnected");
@@ -149,9 +155,8 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  const setScanIntervals = useCallback((wifi: number, ble: number) => {
+  const setScanIntervals = useCallback((wifi: number) => {
     setWifiScanInterval(wifi);
-    setBleScanInterval(ble);
   }, []);
 
   const refreshStats = useCallback(async () => {
@@ -179,8 +184,7 @@ export function ESP32Provider({ children }: { children: ReactNode }) {
         isOnline,
         error,
         wifiScanInterval,
-        bleScanInterval,
-        connect,
+        manualConnect,
         disconnect,
         setEndpoint,
         setScanIntervals,

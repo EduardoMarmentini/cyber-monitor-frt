@@ -1,5 +1,6 @@
 import type { WifiNetwork, WifiScanResult } from "@/types/wifi";
-import type { BleDevice, BleScanResult } from "@/types/ble";
+// BLE desativado (Arduino limitado)
+// import type { BleDevice, BleScanResult } from "@/types/ble";
 import type { Stats, StatsResponse, WifiConfigPayload, WifiConfigResponse } from "@/types/stats";
 
 // Mantido para compatibilidade — será removido na Fase 3
@@ -56,17 +57,22 @@ class ESP32ApiService {
 
   // ─── Health ───────────────────────────────────────────
 
-  // GET /
-  async healthCheck(): Promise<boolean> {
-    if (!this.baseUrl) return false;
-
+  // GET /conect
+  async checkConnection(endpoint: string): Promise<boolean> {
     try {
-      const response = await fetch(this.baseUrl, { method: "GET" });
-      const text = await response.text();
-      return text === "OK";
+      const url = endpoint.replace(/\/$/, "") + "/conect";
+      const response = await fetch(url, { method: "GET" });
+      const data = await response.json();
+      return data?.status === "ok";
     } catch {
       return false;
     }
+  }
+
+  // GET /conect (usa baseUrl configurada)
+  async healthCheck(): Promise<boolean> {
+    if (!this.baseUrl) return false;
+    return this.checkConnection(this.baseUrl);
   }
 
   // ─── Stats ────────────────────────────────────────────
@@ -90,16 +96,16 @@ class ESP32ApiService {
   }
 
   // ─── BLE Scan ─────────────────────────────────────────
-
+  // BLE desativado (Arduino limitado)
   // GET /api/ble
-  async scanBle(): Promise<BleScanResult> {
-    return this.request<BleScanResult>("/api/ble");
-  }
-
-  async getBleDevices(): Promise<BleDevice[]> {
-    const result = await this.scanBle();
-    return result.data;
-  }
+  // async scanBle(): Promise<BleScanResult> {
+  //   return this.request<BleScanResult>("/api/ble");
+  // }
+  //
+  // async getBleDevices(): Promise<BleDevice[]> {
+  //   const result = await this.scanBle();
+  //   return result.data;
+  // }
 
   // ─── WiFi Config ──────────────────────────────────────
 
@@ -113,6 +119,25 @@ class ESP32ApiService {
     return this.request<WifiConfigResponse>("/api/config/wifi", {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  }
+
+  // ─── Credentials (salva sem conectar) ─────────────────
+
+  // POST /api/credentials
+  async saveCredentials(ssid: string, password?: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/api/credentials", {
+      method: "POST",
+      body: JSON.stringify({ ssid, password }),
+    });
+  }
+
+  // ─── Connect (usa credenciais salvas e retorna IP) ────
+
+  // POST /api/connect
+  async connectToNetwork(): Promise<{ success: boolean; ip?: string; message: string }> {
+    return this.request<{ success: boolean; ip?: string; message: string }>("/api/connect", {
+      method: "POST",
     });
   }
 

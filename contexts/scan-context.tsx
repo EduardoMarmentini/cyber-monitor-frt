@@ -10,7 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import type { WifiNetwork } from "@/types/wifi";
-import type { BleDevice } from "@/types/ble";
+// BLE desativado (Arduino limitado)
+// import type { BleDevice } from "@/types/ble";
 import { toast } from "sonner";
 import { esp32Api } from "@/services/esp32-api";
 import { websocketService } from "@/services/websocket";
@@ -18,20 +19,23 @@ import { useESP32 } from "./esp32-context";
 
 interface ScanContextType {
   wifiNetworks: WifiNetwork[];
-  bleDevices: BleDevice[];
+  // BLE desativado
+  // bleDevices: BleDevice[];
 
   isScanning: boolean;
   lastWifiScan: Date | null;
-  lastBleScan: Date | null;
+  // BLE desativado
+  // lastBleScan: Date | null;
 
   rssiHistory: Array<{ time: string; [key: string]: number | string }>;
   channelData: Array<{ channel: number; count: number; networks: string[] }>;
-  scanHistory: Array<{ time: string; wifi: number; ble: number }>;
+  scanHistory: Array<{ time: string; wifi: number }>;
 
   logs: Array<{ timestamp: Date; type: "info" | "success" | "warning" | "error"; message: string }>;
 
   scanWifi: () => Promise<void>;
-  scanBle: () => Promise<void>;
+  // BLE desativado
+  // scanBle: () => Promise<void>;
   scanAll: () => Promise<void>;
   startAutoScan: () => void;
   stopAutoScan: () => void;
@@ -55,25 +59,27 @@ function updateOrAdd<T>(
 }
 
 export function ScanProvider({ children }: { children: ReactNode }) {
-  const { connectionStatus, wifiScanInterval, bleScanInterval } = useESP32();
+  const { connectionStatus, wifiScanInterval } = useESP32(); // bleScanInterval removido
 
   const [wifiNetworks, setWifiNetworks] = useState<WifiNetwork[]>([]);
-  const [bleDevices, setBleDevices] = useState<BleDevice[]>([]);
+  // BLE desativado
+  // const [bleDevices, setBleDevices] = useState<BleDevice[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [lastWifiScan, setLastWifiScan] = useState<Date | null>(null);
-  const [lastBleScan, setLastBleScan] = useState<Date | null>(null);
+  // BLE desativado
+  // const [lastBleScan, setLastBleScan] = useState<Date | null>(null);
 
   const [rssiHistory, setRssiHistory] = useState<Array<{ time: string; [key: string]: number | string }>>([]);
   const [channelData, setChannelData] = useState<Array<{ channel: number; count: number; networks: string[] }>>([]);
-  const [scanHistory, setScanHistory] = useState<Array<{ time: string; wifi: number; ble: number }>>([]);
+  const [scanHistory, setScanHistory] = useState<Array<{ time: string; wifi: number }>>([]);
 
   const [logs, setLogs] = useState<Array<{ timestamp: Date; type: "info" | "success" | "warning" | "error"; message: string }>>([
     { timestamp: new Date(), type: "info", message: "Sistema iniciado. Aguardando conexao com ESP32..." },
   ]);
 
-  const autoScanRef = useRef<{ wifi: NodeJS.Timeout | null; ble: NodeJS.Timeout | null }>({
+  const autoScanRef = useRef<{ wifi: NodeJS.Timeout | null }>({
     wifi: null,
-    ble: null,
+    // ble: null,
   });
 
   const addLog = useCallback((type: "info" | "success" | "warning" | "error", message: string) => {
@@ -143,7 +149,7 @@ export function ScanProvider({ children }: { children: ReactNode }) {
         if (lastEntry && lastEntry.time === time) {
           return [...prev.slice(0, -1), { ...lastEntry, wifi: networks.length }];
         }
-        return [...prev.slice(-19), { time, wifi: networks.length, ble: bleDevices.length }];
+        return [...prev.slice(-19), { time, wifi: networks.length }];
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro desconhecido";
@@ -152,49 +158,51 @@ export function ScanProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsScanning(false);
     }
-  }, [connectionStatus, addLog, updateChannelData, updateRssiHistory, bleDevices.length]);
+  }, [connectionStatus, addLog, updateChannelData, updateRssiHistory]);
 
-  const scanBle = useCallback(async () => {
-    if (connectionStatus !== "connected") {
-      addLog("warning", "ESP32 nao conectado. Configure a conexao nas configuracoes.");
-      return;
-    }
-
-    setIsScanning(true);
-    addLog("info", "Iniciando scan BLE...");
-
-    try {
-      const devices = await esp32Api.getBleDevices();
-      setBleDevices(devices);
-      setLastBleScan(new Date());
-      addLog("success", `${devices.length} dispositivos BLE encontrados`);
-
-      setScanHistory((prev) => {
-        const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-        const lastEntry = prev[prev.length - 1];
-        if (lastEntry && lastEntry.time === time) {
-          return [...prev.slice(0, -1), { ...lastEntry, ble: devices.length }];
-        }
-        return [...prev.slice(-19), { time, wifi: wifiNetworks.length, ble: devices.length }];
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido";
-      addLog("error", `Erro no scan BLE: ${msg}`);
-      toast.error("Falha no scan BLE", { description: msg });
-    } finally {
-      setIsScanning(false);
-    }
-  }, [connectionStatus, addLog, wifiNetworks.length]);
+  // BLE desativado (Arduino limitado)
+  // const scanBle = useCallback(async () => {
+  //   if (connectionStatus !== "connected") {
+  //     addLog("warning", "ESP32 nao conectado. Configure a conexao nas configuracoes.");
+  //     return;
+  //   }
+  //
+  //   setIsScanning(true);
+  //   addLog("info", "Iniciando scan BLE...");
+  //
+  //   try {
+  //     const devices = await esp32Api.getBleDevices();
+  //     setBleDevices(devices);
+  //     setLastBleScan(new Date());
+  //     addLog("success", `${devices.length} dispositivos BLE encontrados`);
+  //
+  //     setScanHistory((prev) => {
+  //       const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  //       const lastEntry = prev[prev.length - 1];
+  //       if (lastEntry && lastEntry.time === time) {
+  //         return [...prev.slice(0, -1), { ...lastEntry, ble: devices.length }];
+  //       }
+  //       return [...prev.slice(-19), { time, wifi: wifiNetworks.length, ble: devices.length }];
+  //     });
+  //   } catch (err) {
+  //     const msg = err instanceof Error ? err.message : "Erro desconhecido";
+  //     addLog("error", `Erro no scan BLE: ${msg}`);
+  //     toast.error("Falha no scan BLE", { description: msg });
+  //   } finally {
+  //     setIsScanning(false);
+  //   }
+  // }, [connectionStatus, addLog, wifiNetworks.length]);
 
   const scanAll = useCallback(async () => {
     await scanWifi();
-    await scanBle();
-  }, [scanWifi, scanBle]);
+    // BLE desativado
+    // await scanBle();
+  }, [scanWifi]); // scanBle removido
 
   const startAutoScan = useCallback(() => {
     if (connectionStatus !== "connected") return;
 
-    addLog("info", `Auto-scan iniciado: Wi-Fi a cada ${wifiScanInterval}s, BLE a cada ${bleScanInterval}s`);
+    addLog("info", `Auto-scan iniciado: Wi-Fi a cada ${wifiScanInterval}s`); // BLE removido
 
     scanAll();
 
@@ -202,20 +210,22 @@ export function ScanProvider({ children }: { children: ReactNode }) {
       scanWifi();
     }, wifiScanInterval * 1000);
 
-    autoScanRef.current.ble = setInterval(() => {
-      scanBle();
-    }, bleScanInterval * 1000);
-  }, [connectionStatus, wifiScanInterval, bleScanInterval, scanWifi, scanBle, scanAll, addLog]);
+    // BLE desativado
+    // autoScanRef.current.ble = setInterval(() => {
+    //   scanBle();
+    // }, bleScanInterval * 1000);
+  }, [connectionStatus, wifiScanInterval, scanWifi, scanAll, addLog]); // bleScanInterval, scanBle removidos
 
   const stopAutoScan = useCallback(() => {
     if (autoScanRef.current.wifi) {
       clearInterval(autoScanRef.current.wifi);
       autoScanRef.current.wifi = null;
     }
-    if (autoScanRef.current.ble) {
-      clearInterval(autoScanRef.current.ble);
-      autoScanRef.current.ble = null;
-    }
+    // BLE desativado
+    // if (autoScanRef.current.ble) {
+    //   clearInterval(autoScanRef.current.ble);
+    //   autoScanRef.current.ble = null;
+    // }
     addLog("info", "Auto-scan parado");
   }, [addLog]);
 
@@ -241,10 +251,11 @@ export function ScanProvider({ children }: { children: ReactNode }) {
           return updated;
         });
       },
-      onBleUpdate: (device) => {
-        const enriched: BleDevice = { ...device, lastSeen: Date.now() };
-        setBleDevices((prev) => updateOrAdd(prev, "mac", enriched));
-      },
+      // BLE desativado
+      // onBleUpdate: (device) => {
+      //   const enriched: BleDevice = { ...device, lastSeen: Date.now() };
+      //   setBleDevices((prev) => updateOrAdd(prev, "mac", enriched));
+      // },
       onStatusChange: (connected) => {
         if (connected) {
           addLog("success", "WebSocket conectado");
@@ -284,16 +295,16 @@ export function ScanProvider({ children }: { children: ReactNode }) {
     <ScanContext.Provider
       value={{
         wifiNetworks,
-        bleDevices,
+        // bleDevices,
         isScanning,
         lastWifiScan,
-        lastBleScan,
+        // lastBleScan,
         rssiHistory,
         channelData,
         scanHistory,
         logs,
         scanWifi,
-        scanBle,
+        // scanBle,
         scanAll,
         startAutoScan,
         stopAutoScan,

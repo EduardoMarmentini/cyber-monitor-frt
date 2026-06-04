@@ -2,7 +2,8 @@
 
 import { StatCard } from "@/components/cards/stat-card";
 import { WifiTable } from "@/components/tables/wifi-table";
-import { BleTable } from "@/components/tables/ble-table";
+// BLE desativado
+// import { BleTable } from "@/components/tables/ble-table";
 import { RssiChart } from "@/components/charts/rssi-chart";
 import { ChannelChart } from "@/components/charts/channel-chart";
 import { DevicesHistoryChart } from "@/components/charts/devices-history-chart";
@@ -11,13 +12,14 @@ import { useScan } from "@/contexts/scan-context";
 import { useESP32 } from "@/contexts/esp32-context";
 import {
   Wifi,
-  Bluetooth,
+  // Bluetooth desativado
+  // Bluetooth,
   Shield,
   AlertTriangle,
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { wifiNetworks, bleDevices, rssiHistory, channelData, scanHistory, logs } = useScan();
+  const { wifiNetworks, rssiHistory, channelData, scanHistory, logs } = useScan(); // bleDevices removido
   const { connectionStatus } = useESP32();
   
   const openNetworks = wifiNetworks.filter((n) => n.encryption === "Open").length;
@@ -54,13 +56,14 @@ export default function DashboardPage() {
               icon={Wifi}
               variant="purple"
             />
-            <StatCard
+            {/* BLE desativado */}
+            {/* <StatCard
               title="Dispositivos BLE"
               value={bleDevices.length}
               subtitle="Ativos"
               icon={Bluetooth}
               variant="cyan"
-            />
+            /> */}
             <StatCard
               title="Redes Seguras"
               value={wifiNetworks.length - openNetworks}
@@ -89,10 +92,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Tables Row */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <WifiTable networks={wifiNetworks} />
-            <BleTable devices={bleDevices} />
-          </div>
+          <WifiTable networks={wifiNetworks} />
 
           {/* Terminal */}
           <TerminalLog logs={logs} />
